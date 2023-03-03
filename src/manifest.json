@@ -1,0 +1,30 @@
+{
+
+  "manifest_version": 2,
+  "name": "Instagram Followers Marker",
+  "author": "Sebastián Castro Gálvez",
+  "version": "1.0",
+
+  "description": "Tiny tool for marking followed accounts",
+
+  "icons": {
+    "64": "icons/IFG-64.png"
+  },
+
+  "permissions": [
+    "activeTab"
+  ],
+
+  "browser_action": {
+    "default_icon": "icons/IFG-64.png",
+    "default_popup": "popup/main_menu.html"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.mozilla.org/*"],
+      "js": ["borderify.js"]
+    }
+  ]
+
+}
