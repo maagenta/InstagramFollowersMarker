@@ -12,18 +12,34 @@
   },
 
   "permissions": [
-    "activeTab"
+        "dns",
+    "menus",
+    "privacy",
+    "storage",
+    "tabs",
+    "unlimitedStorage",
+    "webNavigation",
+    "webRequest",
+    "webRequestBlocking",
+    "activeTab",
+     "*://*instagram.com/*"
   ],
+
 
   "browser_action": {
     "default_icon": "icons/IFG-64.png",
     "default_popup": "popup/main_menu.html"
   },
 
+  "background": {
+  "scripts": ["background.js"]
+  },
+
   "content_scripts": [
     {
-      "matches": ["*://*.mozilla.org/*"],
-      "js": ["borderify.js"]
+      "matches": ["*://*.instagram.com/*"],
+      "js": ["borderify.js"],
+      "run_at": "document_start"
     }
   ]
 
