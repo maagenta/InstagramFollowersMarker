@@ -88,7 +88,6 @@ function pink_all(element, pink) {
 	let elements, type;
 	type = Object.prototype.toString.call(element);
 	if(type === "[object NodeList]") { 
-		console.log("piiiiiink?")
 		elements = element;
 	}
 	else{
@@ -121,6 +120,6 @@ function webPage_changes(mutations) {
 /*setTimeout(append_mark_button, 3000);
 setTimeout(marked_pink, 3000);*/
 
-let somesome = {aa: "aaa"};
+/*let somesome = {aa: "aaa"};
 browser.storage.local.set(somesome);
-console.log(browser.storage.local.get(somesome));
+console.log(browser.storage.local.get(somesome));*/
