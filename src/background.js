@@ -1,6 +1,6 @@
 // background-script.js
 
-/* Receives messages */
+/** Receives messages **/
 browser.runtime.onMessage.addListener(message_received);
 
 async function message_received(action){
@@ -8,40 +8,49 @@ async function message_received(action){
 		case "csv-file-uploaded":
 			let csvUpateState = await update_database_merging_csv_file(action.csvFileUrl);
 			return Promise.resolve(csvUpateState);
+			break;
 		case "export-to-csv-file":
 			const csvDatabaseFile = await convert_to_csv();
 			download_csv_file(csvDatabaseFile);
+			break;
+		case "mark-account":
+			console.log("Botón presionado");
+			add_to_local_database(action.account, action.markedList);
+			break;
 	}
 }
 
-// Send a Message to content-script when URL changed
-function sendMessageOfUrlChanged(tab) {
-    browser.tabs
-      .sendMessage(tab[0].id, { url_changed : 1 })
-      .catch(onError);
+/** Send a Message to content-script when URL changed **/
+browser.tabs.onUpdated.addListener(sendMessageOfUrlChanged)
+async function sendMessageOfUrlChanged() {
+	const tab = await browser.tabs.query({currentWindow: true,active: true,});
+	console.log(tab[0].id);
+	if (tab[0].url.includes(".instagram.")){
+		console.log("passed");
+    	browser.tabs.sendMessage(tab[0].id, { url_changed : 1 });
+    }
 }
-
-// Show errors in console
-function onError(error) {
-  console.error(`Error: ${error}`);
-}
-
-// Detects when page URL changes
-browser.tabs.onUpdated.addListener(() => {
-  browser.tabs.query({currentWindow: true,active: true,})
-    .then(sendMessageOfUrlChanged)
-    .catch(onError);
-});
 
 
 /** Init the local database **/
-let database = {};
+let database = {database: []};
 async function init_local_database(){
 	const localDatabase = await browser.storage.local.get();
 	if (!('database' in localDatabase) || localDatabase.database === undefined)
 		browser.storage.local.set(database);
 }
 
+
+/** Adds accounts to the database **/
+async function add_to_local_database(igAccount,listType){
+	let tempDatabase = await browser.storage.local.get(database);
+	if(!tempDatabase.database.some(list => list.ig_account == igAccount)){ //Prevents errors checking if the account is already in the database
+		tempDatabase.database.push({ig_account: igAccount, marked: listType});
+	}
+	console.log(tempDatabase);
+	await browser.storage.local.set(tempDatabase);
+	console.log(browser.storage.local.get());
+}
 
 /** Update the database with csv file **/
 async function update_database_merging_csv_file(extDatabaseURL){
