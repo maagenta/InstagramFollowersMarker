@@ -4,6 +4,7 @@
 browser.runtime.onMessage.addListener(message_received);
 
 async function message_received(action){
+	console.log("Message Received");
 	switch (action.action){
 		case "csv-file-uploaded":
 			let csvUpateState = await update_database_merging_csv_file(action.csvFileUrl);
@@ -14,8 +15,12 @@ async function message_received(action){
 			download_csv_file(csvDatabaseFile);
 			break;
 		case "mark-account":
-			console.log("Botón presionado");
+			console.log("Button pressed to mark account:", action.account);
 			add_to_local_database(action.account, action.markedList);
+			break;
+		case "unmark-account":
+			console.log("Button pressed to unmark account:", action.account);
+			remove_of_local_database(action.account);
 			break;
 	}
 }
@@ -40,16 +45,32 @@ async function init_local_database(){
 		browser.storage.local.set(database);
 }
 
-
 /** Adds accounts to the database **/
 async function add_to_local_database(igAccount,listType){
-	let tempDatabase = await browser.storage.local.get(database);
-	if(!tempDatabase.database.some(list => list.ig_account == igAccount)){ //Prevents errors checking if the account is already in the database
-		tempDatabase.database.push({ig_account: igAccount, marked: listType});
+	const db = await browser.storage.local.get('database');
+	let tempDatabase = {...db}.database;
+	console.log("Element to add:",igAccount);
+	//console.log(igAccount,tempDatabase.database.some(list => list.ig_account == igAccount));
+	if(!tempDatabase.some(list => list.ig_account == igAccount)){ //Prevents errors checking if the account is already in the database
+		tempDatabase.push({ig_account: igAccount, marked: listType});
 	}
-	console.log(tempDatabase);
-	await browser.storage.local.set(tempDatabase);
-	console.log(browser.storage.local.get());
+	console.log("Temporal database after added element:", tempDatabase);
+	database = tempDatabase;
+	await browser.storage.local.set({database});
+	console.log("Database after added element:",db);
+}
+
+/** Delete accounts of the database **/
+async function remove_of_local_database(igAccount){
+	const db = await browser.storage.local.get('database');
+	let tempDatabase = {...db}.database;
+	const indexOfDatabase = tempDatabase.findIndex(username => username.ig_account == igAccount);
+	tempDatabase.splice(indexOfDatabase,1);
+	console.log("Element to remove:",igAccount);
+	console.log("Temporal database after removed element:",tempDatabase);
+	database = tempDatabase;
+	await browser.storage.local.set({database});
+	console.log("Database after removed element:",db);
 }
 
 /** Update the database with csv file **/
@@ -203,13 +224,3 @@ function download_csv_file (csvFile) {
 		filename: csvFilename
 	})
 }
-
-
-async function test() {
-	await init_local_database();
-	// const csvDatabaseFile = convert_to_csv(database);
-	//download_csv_file(csvDatabaseFile);
-	console.log(browser.storage.local.get());
-}
-
-test();
