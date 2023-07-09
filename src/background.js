@@ -1,5 +1,8 @@
 // background-script.js
 
+/** Init extension functions **/
+init_local_database();
+
 /** Receives messages **/
 browser.runtime.onMessage.addListener(message_received);
 
@@ -49,7 +52,7 @@ async function init_local_database(){
 async function add_to_local_database(igAccount,listType){
 	const db = await browser.storage.local.get('database');
 	let tempDatabase = {...db}.database;
-	console.log("Element to add:",igAccount);
+	console.log("Element to add:",igAccount,"ListType of element to add:",listType);
 	//console.log(igAccount,tempDatabase.database.some(list => list.ig_account == igAccount));
 	if(!tempDatabase.some(list => list.ig_account == igAccount)){ //Prevents errors checking if the account is already in the database
 		tempDatabase.push({ig_account: igAccount, marked: listType});

@@ -1,202 +1,375 @@
-/** Global Variables **/
-let accountUsername,
-	isProfileAccountOnDatabase;
-
+/** Object initialization **/
+markColor = {
+	watchlist1 : "purple",
+	watchlist2 : "MediumPurple",
+	marklist1 : "deeppink",
+	marklist2 : "hotpink"
+};
+profile = new profile();
+markButton = new mark_button(); // Markbutton in needs to be declared before
+mutationObserver = new mutation_observer();
 
 /** Receives external messages **/
 browser.runtime.onMessage.addListener((msg) => {
 	if('url_changed' in msg){
 		console.log("The URL has changed, and the message from background has been received");
-		accountUsername = get_account_username();
-		isProfileAccountOnDatabase = check_account();
-		append_mark_button();
-		pink_marked_profiles();
+		/* Sets profile elements when url is changed
+		   This  is  important, because the mutation
+		   observer  don't do that if it was visited 
+		   a profile before.                      */
+		profile.set_profile_elements();
 	}
 });
+
+/** Execute code when some change in the content of the webpage **/
+function mutation_observer() {
+	this.webPage = document;
+	this.pageObserver = new MutationObserver(webPage_changes);
+	this.pageObserver.observe(this.webPage, {
+	  attributes: true, childList: true,
+	  characterData: true, subtree: true,
+	  run_at: 'document_idle'
+	});
+
+	function webPage_changes(mutations) {
+		console.log("Mutation");
+		profile.execute();
+		marked_users_to_pink();
+	}
+
+}
 
 /** Sends messages **/
 function background_do_action(action) {
 	browser.runtime.sendMessage(action);
 }
 
-/** Gets account username **/
-function get_account_username() {
-	const accountUsername = document.querySelector(".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.x1ms8i2q.xo1l8bm.x5n08af.x10wh9bi.x1wdrske.x8viiok.x18hxmgj").innerText;
-	return accountUsername;
+
+
+/** Profile Context **/
+function profile() {
+
+	/* Set profile elements that will be pinked */
+	this.set_profile_elements = () => {
+		console.log("Setting profile elements...");
+		//Elements that are pinked when there are marked
+		this.user = document.querySelector(".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.x1ms8i2q.xo1l8bm.x5n08af.x10wh9bi.x1wdrske.x8viiok.x18hxmgj");
+		this.userDetails_1 = document.querySelector(".x78zum5.x1q0g3np.xieb3on");
+		this.userDetails_2 = document.querySelector("._aa_c");
+		this.userStories = document.querySelector("._ab05");
+		if(this.user) this.accountUsername = this.user.innerText;
+		this.databaseEntry, this.color;
+		//console.log("Profile before profile elements were setted",this,this.user);
+	}
+
+	/* Execute code of profile context */
+	this.execute = async () => {
+		if (!check_if_profile_elements_was_setted()){
+			console.log("Profile elements has been setted?",this.user);
+			this.set_profile_elements();
+			if (!check_if_its_a_profile_page()) return false;
+			await get_username_in_db();
+			set_profile_color();
+			console.log("Profile->execute context: Profile db entry:", this.databaseEntry)
+			this.pink_marked_profiles();
+			markButton.append();
+			//if(!this.databaseEntry) return false;
+			
+		}
+	}
+
+	/* Checks if profile elements was setted */
+	const check_if_profile_elements_was_setted = () => {
+		return this.user;
+	}
+
+	/* Check if it's in a profile page */
+	const check_if_its_a_profile_page = () => {
+
+		// Check if an element exist
+		if(!this.user){
+			return false;
+		}
+		else if (!this.userDetails_1){
+			return false;
+		}
+		else if (!this.userDetails_2){
+			return false;
+		}
+
+		return true;
+
+	}
+
+	/* Checks if the account in the profile page is in the database */
+	const get_username_in_db = async () => {
+		console.log("Profile->get_username_in_db context: username to entry in db:",this.accountUsername);
+		this.databaseEntry = await check_if_profile_is_in_database(this.accountUsername,"marktype");
+		console.log("Profile->get_username_in_db context: Database entry:",this.databaseEntry);
+	}
+
+	const set_profile_color = () => {
+		switch (this.databaseEntry.marked) {
+			default:
+				this.color = undefined;
+				break;
+			case 0:
+				this.color = "marklistColor";
+				break;
+			case 1:
+				this.color = "watchlistColor"
+				break;
+		}
+		console.log("The profile color is:",this.color);
+	}
+
+	/* Executed when object is instantiated */
+	this.set_profile_elements(); // Sets profile elements when object is instantiated
+	console.log("Profile before profile elements were setted",this.user)
+
+
+	/* Pink profiles if it's marked when a profile page is charged */
+	this.pink_marked_profiles = () => {
+
+		// Check if the Profile is in database
+		if(!(this.databaseEntry)){ 
+			console.log("The if statment works?")
+			
+		}
+		// Check if profile's text is already pinked
+		else if (this.user.style.color == markColor.marklist1 ||  this.user.style.color == markColor.watchlist1){
+			return false;
+		}
+
+		this.pink_unpink_profiles();
+
+	}
+
+	/** Account Username/Description/Stories with pink color **/
+	this.pink_unpink_profiles = () => {
+
+		console.log("profile->pink_unpink_profiles: The profile object:",this);
+
+		// Paint or unpaint elements. Paint by default or according to when Mark button is pressed
+		switch (this.color) {
+			case "marklistColor": case "watchlistColor":
+				paint_elements(this);
+				break;
+			default:
+				unpaint_elements(this);
+				break;
+		}
+
+		function paint_elements(self) {
+			console.log("Color to be painted profile text:",self.color);
+			let markColor1, markColor2;
+			switch (self.color){
+				case "marklistColor":
+					markColor1 = markColor.marklist1;
+					markColor2 = markColor.marklist2;
+					break;
+				case "watchlistColor":
+					markColor1 = markColor.watchlist1;
+					markColor2 = markColor.watchlist2;
+					break;
+			}
+			self.user.style.color = markColor1;
+			pink_all(self.userDetails_1, markColor2);
+			pink_all(self.userDetails_2, markColor2);
+			if(self.userStories) pink_all(self.userStories, markColor1);
+		}
+
+		function unpaint_elements(self){
+			console.log("Profile->unpaint_elements context: Unpainting elements");
+			self.user.style.removeProperty("color");
+			console.log("Unpainted?");
+			unpink_all(self.userDetails_1);
+			unpink_all(self.userDetails_2);
+			if(self.userStories) unpink_all(self.userStories);
+		}
+	}
 }
 
-/** Checks if the account in the profile page is in the database **/
-async function check_account() {
-	var isAccountMarked;
-	if (await check_if_profile_is_in_database(accountUsername)){
-		isAccountMarked = true;
+
+
+/** Mark/unmark button **/
+function mark_button() {
+
+	// Appends markButton
+	this.append = async () => {
+		console.log("Append Mark Button begging comprobing if its exist.");
+
+		// Conditionals if not in a profile account
+		if (document.querySelector('.ifm_buttonMarker')) {
+		    return false;
+		}
+		
+		console.log("Appending Mark Button...");
+
+		this.divContainer = document.querySelector(".x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1");
+		this.buttonDiv0 = document.createElement("div");
+		this.buttonButton = document.createElement("button");
+		this.buttonDiv1 = document.createElement("div");
+		this.buttonDiv2 = document.createElement("div");
+
+		this.buttonDiv0.className = "_ab8w  _ab94 _ab99 _ab9f _ab9m _ab9o  _abb0 _abcm";
+		this.buttonButton.className = "_acan _acap _acas _aj1- ifm_buttonMarker";
+		this.buttonButton.type = "button";
+		this.buttonDiv1.className = "_ab8w._ab94 _ab97 _ab9h _ab9k _ab9p _ab9x _abcm";
+		this.buttonDiv1.style.height = "100%";
+		this.buttonDiv2.className = "_aacl _aaco _aacw _aad6 _aade";
+		this.clickAction;
+		add_click_event();
+
+		const ctrlActive = true; //Temporal
+
+		console.log("Type of marked list readed:",profile.databaseEntry);
+
+
+		switch (profile.databaseEntry.marked) {
+			default:
+				console.log("Markbutton action: undefined");
+				state("markMarklist");
+				break;
+			case 0:
+				state("unmarkMarklist");
+				break;
+			case 1:
+				state("unmarkWatchlist");
+				break;
+		}
+
+		console.log("value of clickAction",this.clickAction);
+
+		this.buttonDiv1.appendChild(this.buttonDiv2);
+		this.buttonButton.appendChild(this.buttonDiv1);
+		this.buttonDiv0.appendChild(this.buttonButton);
+		this.divContainer.children[0].after(this.buttonDiv0);
+
 	}
-	else{
-		isAccountMarked = false;
+
+	// Adds click event
+	const add_click_event = () => {
+		this.buttonButton.addEventListener("click", mark_unmark_account);
 	}
-	console.log("Checkeando:",isAccountMarked);
-	return isAccountMarked;
-}
-
-/** Appends the mark/unmark button **/
-async function append_mark_button() {
-	console.log("buton begin");
-
-	// Conditionals if not in a profile account
-	if (document.querySelector('.ifm_buttonMarker')) {
-	    return false;
-	}
-	
-	console.log("Button continue");
-
-	let divContainer = document.querySelector(".x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1");
-	let buttonDiv0 = document.createElement("div");
-	let buttonButton = document.createElement("button");
-	let buttonDiv1 = document.createElement("div");
-	let buttonDiv2 = document.createElement("div");
-
-	buttonDiv0.className = "_ab8w  _ab94 _ab99 _ab9f _ab9m _ab9o  _abb0 _abcm";
-	buttonButton.className = "_acan _acap _acas _aj1- ifm_buttonMarker";
-	buttonButton.type = "button";
-	buttonButton.style.background = "deeppink";
-	buttonDiv1.className = "_ab8w._ab94 _ab97 _ab9h _ab9k _ab9p _ab9x _abcm";
-	buttonDiv1.style.height = "100%";
-	buttonDiv2.className = "_aacl _aaco _aacw _aad6 _aade";
-
-	if (await isProfileAccountOnDatabase) {
-		buttonDiv2.textContent = "Unmark";
-	}
-	else{
-		buttonDiv2.textContent = "Mark";
-	}
-
-	buttonDiv1.appendChild(buttonDiv2);
-	buttonButton.appendChild(buttonDiv1);
-	buttonDiv0.appendChild(buttonButton);
-	divContainer.children[0].after(buttonDiv0);
-
 
 	// Adds the capability for adding to watchlist with ctrl+click
-	const ctrlActivate = true;
-	if (ctrlActivate) {
-		document.addEventListener("keydown", key => {if(key.key == "Control") ctrl_mark_button(key)});
-		document.addEventListener("keyup", key => {if(key.key == "Control") ctrl_mark_button(key)});
+	const add_ctrl_event = () => {
+		document.addEventListener("keydown", ctrlkey_action);
+		document.addEventListener("keyup", ctrlkey_action);
 	}
 
-	function ctrl_mark_button(key) {
-		if (key.type == "keydown"){
-			buttonButton.style.background = "purple";
-		}
-		else {
-			buttonButton.style.background = "deeppink";
-		}
-
+	const remove_ctrl_event = () => {
+		document.removeEventListener("keydown", ctrlkey_action);
+		document.removeEventListener("keyup", ctrlkey_action);
 	}
 
-	// On click adds the account to the database
-	buttonButton.addEventListener("click", ()=>{mark_unmark_account(buttonDiv2)});
+	const ctrlkey_action = (key) => {
+		if(key.key == "Control"){
+			if (key.type == "keydown"){
+				this.buttonButton.style.background = markColor.watchlist1;
+				this.clickAction = "markWatchlist";
+			}
+			else {
+				this.buttonButton.style.background = markColor.marklist1;
+				this.clickAction = "markMarklist";
+			}
+		}
+	}
 
-}
-
-/** Mark or unmark an profile account (markButton action) **/
-async function mark_unmark_account(buttonDiv2){
-
-	//console.log("Button pressed");
-	const checkedAccount = await check_account();
+		// Mark or unmark an profile account (markButton action)
+	const mark_unmark_account = () => {
+		let listType;
+		console.log("Begins action of mark/unmark button with the follow listType",this.clickAction);
 	
-	if (checkedAccount) {
-		console.log("Button in Unmark-mode pressed with the follow account username:", accountUsername);
-		background_do_action({action: "unmark-account", account: accountUsername});
-		buttonDiv2.textContent = "Mark";
-		pink_unpink_profiles('unmark');
-	}
-	else {
-		console.log("Button in Mark-mode pressed with the follow account username:", accountUsername);
-		background_do_action({action: "mark-account", account: accountUsername, markedList: 1});
-		console.log("Marked User:",accountUsername);
-		buttonDiv2.textContent = "Unmark";
-		pink_unpink_profiles('mark');
-	}
+		switch (this.clickAction) {
+			case "unmark": // When is in unmark mode
+				console.log("Doing unmarking action");
+				profile.color = undefined;
+				unmark_account();
+				state("markMarklist");
+				break;
+			case "markMarklist":
+				listType = 0;
+				console.log("Doing marking action (listType is 0)");
+				profile.color = "marklistColor";
+				mark_account(listType);
+				state("unmarkMarklist");
+				break;
+			case "markWatchlist":
+				listType = 1;
+				console.log("Doing marking action (listType is 1)");
+				profile.color = "watchlistColor";
+				mark_account(listType);
+				state("unmarkWatchlist");
+				break;
+		}
 
-}
+		function mark_account(listType){
+			console.log("Button in markmode pressed with the follow account username and lisType:", profile.accountUsername, listType);
+			background_do_action({action: "mark-account", account: profile.accountUsername, markedList: listType});
+			console.log("Marked User:",profile.accountUsername);
+			profile.pink_unpink_profiles();
+		}
 
-/** Set profile elements that will be pinked **/
-function set_profile_elements() {
-	//Elements that are pinked when there are marked
-	let profile = {};
-	profile.user = document.querySelector(".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.x1ms8i2q.xo1l8bm.x5n08af.x10wh9bi.x1wdrske.x8viiok.x18hxmgj");
-	profile.userDetails_1 = document.querySelector(".x78zum5.x1q0g3np.xieb3on");
-	profile.userDetails_2 = document.querySelector("._aa_c");
-	profile.userStories = document.querySelector("._ab05");
-	return profile;
-}
-
-/** Pink profiles if it's marked when a profile page is charged **/
-async function pink_marked_profiles(){
-
-	const profile = set_profile_elements();
-
-	// Check if an element exist
-	if(!profile.user){
-		console.log("1");
-		return false;
-	}
-	else if (!profile.userDetails_1){
-		console.log("2");
-		return false;
-	}
-	else if (!profile.userDetails_2){
-		return false;
-	}
-	// Check if the Profile is in database
-	else if(!(await isProfileAccountOnDatabase)){ 
-		return false;
-	}
-	else if (profile.user.style.color == "deeppink"){
-		return false;
+		function unmark_account(){
+			console.log("Button in Unmark-mode pressed with the follow account username:", profile.accountUsername);
+			background_do_action({action: "unmark-account", account: profile.accountUsername});
+			console.log("Marked User:",profile.accountUsername);
+			profile.pink_unpink_profiles();
+		}
 	}
 
-	pink_unpink_profiles();
+	// Changes state of button
+	const state = (buttonState) => {
 
-}
+		this.markText = "Mark";
+		this.unmarkText = "Unmark";
 
-/** Account Username/Description/Stories with pink color **/
-async function pink_unpink_profiles(ProfileMarkUnmarkButton) {
 
-	const profile = set_profile_elements();
+		// States are unmarkMarklist, unmarkWatchlist, markMarklist, markWatchlist
+		switch (buttonState) { 
+			// unmark states
+			case "unmarkMarklist": case "unmarkWatchlist":
+				console.log("Button in",buttonState,"but for now passing in unmark mode");
+				this.buttonDiv2.textContent = this.unmarkText;
+				this.clickAction = "unmark";
+				remove_ctrl_event();
+				switch (buttonState){
+					case "unmarkMarklist":
+						console.log("Button in unmarkMarklist mode");
+						this.buttonButton.style.background = markColor.marklist1;
+						break;
+					case "unmarkWatchlist":
+						console.log("Button in unmarkWatchlist mode");
+						this.buttonButton.style.background = markColor.watchlist1;
+						break;
+				}
+				break;
+			// mark states
+		 	case "markMarklist": case "markWatchlist":
+				console.log("Button in marklist mode");
+		 		this.buttonDiv2.textContent = this.markText;
+				switch (buttonState){
+					case "markMarklist":
+						console.log("Button in markMarklist mode");
+						add_ctrl_event();
+				 		this.buttonButton.style.background = markColor.marklist1;
+				 		this.clickAction = "markMarklist";
+					break;
+					case "markWatchlist":
+						console.log("Button in markWatchlist mode");
+						this.buttonButton.style.background = markColor.watchlist1;
+						this.clickAction = "markWatchlist";
+					break;
+				}
+		 		break;
+		}
 
-	console.log("The profile object:",profile);
-
-	// Paint or unpaint elements. Paint by default or according to when Mark button is pressed
-	switch (ProfileMarkUnmarkButton) {
-		default:
-			paint_elements();
-			break;
-		case "mark":
-			paint_elements();
-			break;
-		case "unmark":
-			unpaint_elements();
-			break;
-	}
-
-	function paint_elements() {
-		console.log("Painting elements");
-		profile.user.style.color = "deeppink";
-		pink_all(profile.userDetails_1, "hotpink");
-		pink_all(profile.userDetails_2, "hotpink");
-		if(profile.userStories) pink_all(profile.userStories, "deeppink");
-	}
-
-	function unpaint_elements(){
-		console.log("Unpainting elements");
-		profile.user.style.removeProperty("color");
-		console.log("Unpainted?");
-		unpink_all(profile.userDetails_1, "hotpink");
-		unpink_all(profile.userDetails_2, "hotpink");
-		if(profile.userStories) unpink_all(profile.userStories, "deeppink");
+		console.log("State of buttonAction after state funtion execution:",this.clickAction);
 	}
 }
+
 
 
 /** In the account list, marked accounts with Pink **/
@@ -261,8 +434,8 @@ function marked_users_to_pink() {
 			checkedAccounts = await check_if_accounts_are_in_database(account.usernameDocumentElements, account.descriptionDocumentElements);
 			account.usernameDocumentElements = checkedAccounts.usernames;
 			account.descriptionDocumentElements = checkedAccounts.descriptions;
-			pink_all(account.usernameDocumentElements, "deeppink");
-			pink_all(account.descriptionDocumentElements, "hotpink");
+			pink_all(account.usernameDocumentElements, markColor.marklist1);
+			pink_all(account.descriptionDocumentElements, markColor.marklist1);
 		}
 	}
 
@@ -275,11 +448,35 @@ function marked_users_to_pink() {
 
 
 /** Checks if the profile is in the local database **/
-async function check_if_profile_is_in_database(username){
-	let acDatabase = await usernames_of_database_as_array();
-	console.log(acDatabase);
-	console.log("Result:",acDatabase.includes(username));
-	return (acDatabase.includes(username));
+async function check_if_profile_is_in_database(username,marktype){
+	marktype = "marktype";
+	switch (marktype) {
+		default:
+			return only_profiles(username);
+			break;
+		case "marktype":
+			return profiles_with_marktype(username);
+			break;
+	}
+
+	async function only_profiles(username) {
+		let acDatabase = await usernames_of_database_as_array();
+		console.log("Is the profile in database? Database response:", acDatabase);
+		const result = acDatabase.includes(username);
+		console.log("After checking if account is in the db, finding only profile:", result);
+		return (result);
+	}
+
+	async function profiles_with_marktype(username) {
+		let acDatabase = await usernames_of_database_as_array("marktype");
+		console.log("Is the profile in database? Database response:", acDatabase);
+		var result = acDatabase.find(usrnme => usrnme.ig_account == username);
+		console.log("After checking if account is in the db, finding profile and marktype:",result);
+
+		if (!result) return false;
+		return (result);
+	}
+
 }
 
 /** Checks if some of the ig_accounts are in the database **/
@@ -317,12 +514,26 @@ async function check_if_accounts_are_in_database(usernames, descriptions) {
 }
 
 /** Returns local database usernames as an array */
-async function usernames_of_database_as_array(){
-	let acDatabase = (await browser.storage.local.get("database")).database;
-	acDatabase = acDatabase.map(cell => cell.ig_account);
-	//console.log("Base de datos",acDatabase);
+async function usernames_of_database_as_array(marktype){
+	console.log("Begin extracting database usernames");
+	let acDatabase = await browser.storage.local.get("database");
+	acDatabase = {...acDatabase}.database;
+	console.log("Database extracted from local storage:",acDatabase);
+
+	switch (marktype) {
+		default:
+			acDatabase = acDatabase.map(cell => cell.ig_account);
+			break;
+		case "marktype":
+			console.log("Entered in marktype, so it will be an array of objects")
+			break;
+	}
+
+	//console.log("Database as an array:",acDatabase);
 	return acDatabase;
 }
+	
+
 
 /** Paint elements to pink **/
 function pink_all(element,pink){
@@ -340,8 +551,8 @@ function pink_unpink_all(element, pink) {
 	console.log(element,pink);
 	let elements, type;
 	type = Object.prototype.toString.call(element);
-	if (type === "[object Array]") { 
-		elements = element;
+	if (type === "[object Array]") {
+ 		elements = element;
 	}
 	else {
 		elements = element.querySelectorAll("*");
@@ -363,22 +574,4 @@ function pink_unpink_all(element, pink) {
 		item.style.removeProperty("color");
 		})
 	}
-}
-
-
-/** Execute code when some change in the content of the webpage **/
-const webPage = document;
-let pageObserver = new MutationObserver(webPage_changes);
-
-pageObserver.observe(webPage, {
-  attributes: true,
-  childList: true,
-  characterData: true,
-  subtree: true,
-  run_at: 'document_idle'
-});
-
-function webPage_changes(mutations) {
-	console.log("Mutation");
-	marked_users_to_pink();
 }
