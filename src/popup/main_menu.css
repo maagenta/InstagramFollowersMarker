@@ -1,0 +1,87 @@
+@import 'color_palette.css';
+@import 'modal_box.css';
+
+* {
+	user-select: none;
+}
+
+header, footer, main {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+header, footer {
+	background: var(--second-gray);
+}
+
+section {
+	display: flex;
+	width: 655px;
+}
+
+h1 {
+	font-size: 40px;
+}
+
+header > section {
+	align-items: center;
+}
+
+header h1 {
+	color: var(--first-violet);
+	margin-bottom: 5px;
+}
+
+header h2 {
+	font-size: 20px;
+	margin: 0;
+	font-weight: lighter;
+}
+
+main, footer > section {
+	margin-left: 30px;
+	margin: 20px;
+}
+
+main h1 {
+	font-size: 50px;
+}
+
+main > section {
+	flex-direction: column;
+}
+
+main > section > div {
+	margin-left: 10px;
+}
+
+main .form-check{
+	margin: 10px;
+}
+
+.form-switch .form-check-input{
+	box-shadow: none;
+}
+
+.form-switch .form-check-input:not(:checked):focus {
+	border-color: var(--second-pink);
+	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ff6ebc'/%3e%3c/svg%3e");
+}
+
+.form-check-input:checked {
+	background-color: var(--first-pink);
+	border-color: var(--third-pink);
+}
+
+footer > section {
+	flex-direction: column;
+}
+
+.link-primary {
+	color: var(--first-pink);
+}
+
+.link-primary:hover {	
+	color: var(--second-pink);
+}

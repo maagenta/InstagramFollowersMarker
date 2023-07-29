@@ -35,6 +35,7 @@ function mutation_observer() {
 		console.log("Mutation");
 		profile.execute();
 		marked_users_to_pink();
+		//profile_picture();
 	}
 
 }
@@ -199,7 +200,7 @@ function mark_button() {
 
 		// Conditionals if not in a profile account
 		if (document.querySelector('.ifm_buttonMarker')) {
-		    return false;
+			return false;
 		}
 		
 		console.log("Appending Mark Button...");
@@ -345,15 +346,15 @@ function mark_button() {
 				}
 				break;
 			// mark states
-		 	case "markMarklist": case "markWatchlist":
+			case "markMarklist": case "markWatchlist":
 				console.log("Button in marklist mode");
-		 		this.buttonDiv2.textContent = this.markText;
+				this.buttonDiv2.textContent = this.markText;
 				switch (buttonState){
 					case "markMarklist":
 						console.log("Button in markMarklist mode");
 						add_ctrl_event();
-				 		this.buttonButton.style.background = markColor.marklist1;
-				 		this.clickAction = "markMarklist";
+						this.buttonButton.style.background = markColor.marklist1;
+						this.clickAction = "markMarklist";
 					break;
 					case "markWatchlist":
 						console.log("Button in markWatchlist mode");
@@ -361,7 +362,7 @@ function mark_button() {
 						this.clickAction = "markWatchlist";
 					break;
 				}
-		 		break;
+				break;
 		}
 
 		console.log("State of buttonAction after state funtion execution:",this.clickAction);
@@ -579,17 +580,18 @@ async function check_if_accounts_are_in_database(usernames, descriptions) {
 	listTypes = accountsMarked.map(i => markedDatabase[i]);
 	return {
 		usernames: usernames,
-	    descriptions: descriptions,
-	    listTypes: listTypes
+		descriptions: descriptions,
+		listTypes: listTypes
 		}
 }
 
 /** Returns local database usernames as an array */
 async function entries_of_database_as_array(marktype){
-	console.log("Begin extracting database usernames");
-	let acDatabase = await browser.storage.local.get("database");
-	acDatabase = {...acDatabase}.database;
-	console.log("Database extracted from local storage:",acDatabase);
+	console.log("entries_of_database_as_array: Begin extracting database usernames");
+	let acDatabase = (await browser.storage.local.get('database')).database;
+	//acDatabase = {...acDatabase}.database;
+	console.log("database as an array:", acDatabase.database);
+	console.log("entries_of_database_as_array: Database extracted from local storage:",acDatabase);
 	return acDatabase;
 }
 	
@@ -612,7 +614,7 @@ function pink_unpink_all(elements, pink) {
 	console.log("pink_unpink_all element and color:",elements,pink);
 	const type = Object.prototype.toString.call(elements)
 	if (!(type === "[object Array]")) {
- 		elements = elements.querySelectorAll("*");
+		elements = elements.querySelectorAll("*");
 	}
 
 	switch (pink){
@@ -651,4 +653,22 @@ function pink_unpink_all(elements, pink) {
 		})
 	}
 
+}
+
+function profile_picture() {
+	profileImage = document.querySelector("main .xpdipgo.x6umtig.x1b1mbwd.xaqea5y.xav7gou.xk390pu.x5yr21d.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x11njtxf.xh8yej3")
+	profileImage.onload = function() {
+		console.log("profile_picture: DOM Element catched when is profile image:",profileImage);
+		var canvas = document.createElement('canvas');
+		canvas.width = profileImage.width;
+		canvas.height = profileImage.height;
+		var ctx = canvas.getContext('2d');
+		ctx.drawImage(profileImage, 0, 0);
+
+		var base64Image = canvas.toDataURL();
+		localStorage.setItem('imagen', base64Image);
+		console.log('Imagen almacenada en el localStorage');
+		console.log("La imagen es:",localStorage.getItem('imagen'));
+		window.open(base64Image, '_blank');
+	 }
 }

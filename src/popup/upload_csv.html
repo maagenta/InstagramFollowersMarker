@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Upload CSV file</title>
+	<link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<link href="color_palette.css" rel="stylesheet">
+	<link href="modal_box.css"  rel="stylesheet">
+	<style>
+		html, body {
+			height: 100%;
+		}
+
+		main {
+			background: var(--first-pink);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100%;
+		}
+
+		.file-picker {
+			display: flex;
+			flex-direction: column;
+			min-width: 480px;
+		}
+
+		.form-control {
+			background: var(--second-pink);
+		}
+
+		.form-control::file-selector-button {
+			background: var(--first-pink);
+		}
+
+		#csv-upload-button {
+		font-size: 25px;
+		padding: 0 50px;
+		height: 64px;
+		margin: 5px 0 0 0;
+		background: var(--first-violet);
+		border: 1px solid #ced4da;
+		}
+
+		.modal {
+			background: color-mix(in srgb, var(--second-gray) 20%, transparent);
+		}
+
+		.modal .modal-message {
+			text-align: center;
+		}
+
+		.modal code {
+			text-align: left;
+			display: inline-block;
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<div class="file-picker">
+  		<!-- <label for="formFileLg" class="form-label">Select your CSV file...</label> -->
+  		<input id="csv-file-picker" class="form-control form-control-lg" type="file">
+  		<button id="csv-upload-button" class="btn btn-primary" type="button">Upload CSV file...</button>
+		</div>
+	</main>
+	<script src="./upload_csv.js" type="module"></script>
+</body>
+</html>

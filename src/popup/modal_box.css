@@ -1,0 +1,31 @@
+.modal {
+	background: color-mix(in srgb, var(--second-gray) 90%, transparent);
+	backdrop-filter: blur(3px);
+}
+
+.modal.opening{
+	animation: modal-animation 0.6s ease-in-out;
+}
+
+.modal.closing{
+	animation: modal-animation 0.6s ease-in-out reverse;
+}
+
+@keyframes modal-animation {
+	0% {opacity: 0;}
+	90% {opacity: 1;}
+}
+
+.modal-content.opening {
+	animation: modal-content-append 0.4s ease-in-out;
+}
+
+.modal-content.closing {
+	animation: modal-content-append 0.4s ease-in-out reverse;
+}
+
+@keyframes modal-content-append {
+	0%, 10% {transform: translateY(calc(-75vh));}
+	0%, 40% {opacity: 0;}
+	100% {transform: none; opacity: 1;}
+}

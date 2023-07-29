@@ -9,9 +9,16 @@ browser.runtime.onMessage.addListener(message_received);
 async function message_received(action){
 	console.log("Message Received");
 	switch (action.action){
-		case "csv-file-uploaded":
-			let csvUpateState = await update_database_merging_csv_file(action.csvFileUrl);
-			return Promise.resolve(csvUpateState);
+		case "import-csv-to-database":
+			try {
+				import_csv_database = await import_csv_database(action.csvData);
+				return Promise.resolve(import_csv_database);
+			}
+			catch(err){
+				console.log("import-csv-to-database:",err);
+				err = new Error(err);
+				return Promise.reject(err);
+			};
 			break;
 		case "export-to-csv-file":
 			const csvDatabaseFile = await convert_to_csv();
@@ -19,11 +26,14 @@ async function message_received(action){
 			break;
 		case "mark-account":
 			console.log("Button pressed to mark account:", action.account);
-			add_to_local_database(action.account, action.markedList);
+			add_entry_to_local_database(action.account, action.markedList);
 			break;
 		case "unmark-account":
 			console.log("Button pressed to unmark account:", action.account);
-			remove_of_local_database(action.account);
+			remove_entry_of_local_database(action.account);
+			break;
+		case "reset-database":
+			reset_database();
 			break;
 	}
 }
@@ -41,157 +51,96 @@ async function sendMessageOfUrlChanged() {
 
 
 /** Init the local database **/
-let database = {database: []};
 async function init_local_database(){
+	const cleanDatabase = {database: []};
 	const localDatabase = await browser.storage.local.get();
 	if (!('database' in localDatabase) || localDatabase.database === undefined)
-		browser.storage.local.set(database);
+		browser.storage.local.set(cleanDatabase);
 }
 
 /** Adds accounts to the database **/
-async function add_to_local_database(igAccount,listType){
-	const db = await browser.storage.local.get('database');
-	let tempDatabase = {...db}.database;
-	console.log("Element to add:",igAccount,"ListType of element to add:",listType);
+async function add_entry_to_local_database(igAccount,listType){
+	const localDatabase = (await browser.storage.local.get('database')).database;
+	let tempDatabase = localDatabase;
+	console.log("add_entry_to_local_database: Element to add:",igAccount,"ListType of element to add:",listType);
 	//console.log(igAccount,tempDatabase.database.some(list => list.ig_account == igAccount));
 	if(!tempDatabase.some(list => list.ig_account == igAccount)){ //Prevents errors checking if the account is already in the database
 		tempDatabase.push({ig_account: igAccount, marked: listType});
 	}
-	console.log("Temporal database after added element:", tempDatabase);
-	database = tempDatabase;
-	await browser.storage.local.set({database});
-	console.log("Database after added element:",db);
+	console.log("add_entry_to_local_database: Temporal database after added element:", tempDatabase);
+	const database = tempDatabase;
+	await browser.storage.local.set(database);
+	console.log("add_entry_to_local_database: Database after added element:",db);
 }
 
 /** Delete accounts of the database **/
-async function remove_of_local_database(igAccount){
-	const db = await browser.storage.local.get('database');
-	let tempDatabase = {...db}.database;
+async function remove_entry_of_local_database(igAccount){
+	const localDatabase = (await browser.storage.local.get('database')).database;
+	let tempDatabase = localDatabase;
 	const indexOfDatabase = tempDatabase.findIndex(username => username.ig_account == igAccount);
 	tempDatabase.splice(indexOfDatabase,1);
-	console.log("Element to remove:",igAccount);
-	console.log("Temporal database after removed element:",tempDatabase);
-	database = tempDatabase;
+	console.log("remove_entry_of_local_database: Element to remove:",igAccount);
+	console.log("remove_entry_of_local_database: Temporal database after removed element:",tempDatabase);
+	const database = tempDatabase;
 	await browser.storage.local.set({database});
-	console.log("Database after removed element:",db);
+	console.log("remove_entry_of_local_database: Database after removed element:",db);
+}
+
+/** Reset Database */
+async function reset_database(){
+	const database = {database: []};
+	console.log("reset_database: Begin reset database...")
+	browser.storage.local.set(database);
+	console.log("Database reseted", await browser.storage.local.get("database"));
 }
 
 /** Update the database with csv file **/
-async function update_database_merging_csv_file(extDatabaseURL){
-
-	function merge_databases(local,external){
-		console.log("Externa",external);
-		console.log("Local",local);
-		const checkDatabaseConsidences = item => !local.database.some(bItem => item.ig_account === bItem.ig_account);
-		const filterDatabaseCoinsidences = external.database.filter(checkDatabaseConsidences);
-		console.log("To add:",filterDatabaseCoinsidences);
-		const _database = local.database.concat(filterDatabaseCoinsidences);
-		return {database: _database};
-	}
-
-	const extDatabase = await ext_database_to_object(extDatabaseURL);
-	let localDatabase = await browser.storage.local.get();
-
-	// Check the integrity of the database
+async function import_csv_database(csvDatabase){
+	const extDatabase = csvDatabase;
+	let localDatabase = await browser.storage.local.get('database');
+	let extDatabaseNewEntries;
+	console.log("import_csv_database: begining");
+	// Check the integrity of the external database
 	if(extDatabase[0] == false){
-		console.log("The database is broken");
-		return extDatabase;
+		const errMessage = "The database is broken";
+		console.log("import_csv_database: The database is broken");
+		return Promise.reject(errMessage);
 	}
-	
-	if (!('database' in localDatabase) || localDatabase.database === {}) {
+
+	// The local database is empty?
+	if (!('database' in localDatabase) || localDatabase.database.length === 0) {
 		database = extDatabase;
 	}
 	else{
-		database = merge_databases(localDatabase, extDatabase);
+		extDatabaseNewEntries = filter_databases_coincidences(localDatabase, extDatabase);
+		// Checks if the database to import has the same entries as the local database
+		if(extDatabaseNewEntries.length === 0){
+			const errMessage = "The database to import has the same entries as the local database";
+			console.log("import_csv_database:",errMessage);
+			return Promise.reject(errMessage);
+		} else {
+			merge_databases(localDatabase,extDatabaseNewEntries); //Merge local and external databases
+
+		}
 	}
+	
+	// Sets the database with the new entries
 	browser.storage.local.set(database);
-	//console.log(await browser.storage.local.get());
+	console.log("merge_databases: The local database after the importation:",await browser.storage.local.get());
+	return Promise.resolve("Database has been imported succesfully");
 
-	return [true, "Database has been imported succesfully"];
-}
-
-
-/** Reads CSV database and convert it to an object **/
-async function ext_database_to_object(extDatabaseURL) {
-	//const extDatabaseURL = browser.runtime.getURL("database.csv")
-	let extDatabase, database, dataToReturn;
-
-	await fetch(extDatabaseURL)
-	.then(response => response.text())
-	.then(rawFileContent => return_object(rawFileContent));
-
-	// 
-	function return_object(rawFileContent) {
-		console.log(is_a_valid_database(rawFileContent));
-		isAvalidDataBase = is_a_valid_database(rawFileContent);
-		if (isAvalidDataBase[0]) dataToReturn = read_database(rawFileContent);
-		else dataToReturn = isAvalidDataBase;
+	function filter_databases_coincidences(local,external){
+		console.log("import_csv_database->filter_database_coincidences: External database",external);
+		console.log("import_csv_database->filter_database_coinciences: Local database",local);
+		const checkDatabaseCoincidences = item => !local.database.some(bItem => item.ig_account === bItem.ig_account);
+		return external.database.filter(checkDatabaseCoincidences);
 	}
 
-	// Return data
-	return dataToReturn;
-
-	// Comprobe if is a valid csv database
-	function is_a_valid_database(rawFileContent){
-		console.log("Comprobing Database...");
-		let errMessage, extDatabase, isValidDatabase;
-		isValidDatabase = false;
-
-		extDatabase = rawFileContent.split('\n');
-		if(extDatabase[0] === "ig_account marked"){ // The head should be "ig_account marked"
-			console.log("First step passed");
-			if(!(extDatabase.length === 1)){ // Database has entries?
-				console.log("Database length passed");
-				extDatabase = extDatabase.map(element => element.split(" "));
-				if(extDatabase.every(subarray => subarray.length === 2)){ // Each line need to have two entries
-					console.log("Subarray length passed");
-					extDatabase.shift();
-					console.log("Array",extDatabase)
-					if(extDatabase.every(
-						subarray => typeof subarray[0] === "string" && ((subarray[1] == "0") || (subarray[1] == "1")))) // Each element is valid?
-					{
-						console.log("All passed");
-						isValidDatabase = true;
-						return [true];
-					}
-					else {
-						errMessage = "The second element of at least one entry isn't 0 or 1\n" +
-									  "Remember that the second entry of the entry needs to be 0 or 1"
-					}
-				}
-				else {
-					errMessage = "At least one entries of the database doesn't contain two elements\n" +
-								 "All entries of the database needs to contain two elementets"
-				}
-			}
-			else {
-				errMessage = "The database hasn't entries"
-			}
-		}
-		else {
-			errMessage = "The database headers aren't correct\n" +
-						 "They should be: 'ig_account marked'"
-		}
-		if(!isValidDatabase) {
-			return [false, errMessage];
-		}
-	}
-
-	// Read the database
-	function read_database(rawFileContent) {
-		console.log("Reading Database...");
-		extDatabase = rawFileContent;
-		extDatabase = extDatabase.split('\n');
-		extDatabase.shift();
-		const database = extDatabase.map(
-		(element) => {
-				let row = element.split(" ");
-				element = {};
-				element.ig_account = row[0];
-				element.marked = row[1];
-				return element;
-		});
-		return {database};
+	// Merge external and local database
+	function merge_databases(local,extDatabaseNewEntries){
+		console.log("import_csv_database->merge_databases Entries to add:",extDatabaseNewEntries);
+		const _database = local.database.concat(extDatabaseNewEntries);
+		return {database: _database};
 	}
 }
 
@@ -199,9 +148,9 @@ async function ext_database_to_object(extDatabaseURL) {
 /** Convert actual database to csv **/
 async function convert_to_csv() {
 	let csvDatabase;
-	const database = await browser.storage.local.get("database");
+	const database = (await browser.storage.local.get("database")).database;
 	console.log("This is the database:", database);
-	csvDatabase = database.database.map(element => {
+	csvDatabase = database.map(element => {
 		let databaseArray = [];
 		databaseArray[0] = element.ig_account;
 		databaseArray[1] = element.marked;
