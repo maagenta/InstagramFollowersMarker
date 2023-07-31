@@ -1,20 +1,59 @@
 import * as modalBox from "./modal_box.js"
 
 /** Begin flow **/
+input_user_preferences();
 add_triggers();
 
 /** Adds event triggers to objects when they've the attribute "action" **/
 function add_triggers(){
 	const actionDomObjects = document.querySelectorAll("[action]");
-	console.log(actionDomObjects);
-	actionDomObjects.forEach( element => {element.addEventListener("click", do_action)});
+	console.log("add_trigger: elements that's going to add triggers",actionDomObjects);
+	actionDomObjects.forEach( element => {
+		let event;
+		if (element.tagName == "INPUT") event = "click";
+		else event = "change"
+		element.addEventListener(event, do_action)
+	});
 }
 
 /** Triggers the action to background using the action value **/
-function do_action(triggeredElement){
-	const action = triggeredElement.target.getAttribute("action");
-	browser.runtime.sendMessage({action: action});
+async function do_action(triggeredElement){
+	let action = triggeredElement.target.getAttribute("action");
+	if(action.includes("userPrefs"))  {
+		action = {
+			action: "switch-user-preference",
+			userPref: action.slice(10),
+			state: triggeredElement.target.checked
+		};
+		browser.runtime.sendMessage(action);
+		const tabs = (await browser.tabs.query({})).filter(tab => tab.url.includes(".instagram."));
+		console.log("do_action Instagram tabs:",tabs);
+		tabs.forEach(tab => {
+			console.log(tab);
+			browser.tabs.sendMessage(tab.id, {userPrefs_changed: true});
+		})
+	}
+	else {
+		browser.runtime.sendMessage(action);
+	}
 }
+
+/** User prefs checkbox **/
+async function input_user_preferences(){
+	const userPreferencesContainer = document.getElementById("user-preferences");
+	const userPreferencesCheckboxes = userPreferencesContainer.querySelectorAll("input");
+	const userPrefs = (await browser.storage.local.get("userPrefs")).userPrefs;
+	console.log("input_user_preferences: preferences:",userPrefs);
+	userPreferencesCheckboxes.forEach(input => {
+		const preference = input.getAttribute("action").slice(10);
+		console.log(preference,userPrefs[preference]);
+		if (userPrefs[preference]){
+			input.checked = true;
+		}
+		else input.checked = false;
+	});
+}
+
 
 /** Reset database **/
 const deleteTrigger = document.getElementById("delete-all");

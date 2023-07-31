@@ -21,17 +21,17 @@
   <main>
     <section>
       <h1>Options</h1>
-      <div>
+      <div id="user-preferences">
       	<div class="form-check form-switch">
-        		<input id="show-button-marker" class="form-check-input" type="checkbox" role="switch">
+        		<input id="show-button-marker" action="userPrefs-showButtonMarker" class="form-check-input" type="checkbox" role="switch">
         		<label for="show-button-marker" class="form-check-label">Show button maker</label>
       	</div>
       	<div class="form-check form-switch">
-      		<input id="highlight-profiles" class="form-check-input" type="checkbox" role="switch">
+      		<input id="highlight-profiles" action="userPrefs-highlightMarkedProfiles" class="form-check-input" type="checkbox" role="switch">
         		<label for="highlight-profiles" class="form-check-label">Highlight profiles where are in the database</label>
         	</div>
         	<div class="form-check form-switch">
-        		<input id="ctrl-click" class="form-check-input" type="checkbox" role="switch">
+        		<input id="ctrl-click" action="userPrefs-ctrlClick" class="form-check-input" type="checkbox" role="switch">
         		<label for="ctrl-click" class="form-check-label">Ctrl+Click saves the profile in the watchlist</label>
         	</div>
       </div>

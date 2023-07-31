@@ -5,9 +5,13 @@ markColor = {
 	marklist1 : "deeppink",
 	marklist2 : "hotpink"
 };
-profile = new profile();
-markButton = new mark_button(); // Markbutton in needs to be declared before
-mutationObserver = new mutation_observer();
+let userPrefs, oldUserPrefs;
+(async()=>{
+	userPrefs = await get_userPrefs();
+	const mutationObserver = new mutation_observer();
+})()
+const profile = new Profile();
+const markButton = new MarkButton(); // Markbutton in needs to be declared before
 
 /** Receives external messages **/
 browser.runtime.onMessage.addListener((msg) => {
@@ -19,6 +23,10 @@ browser.runtime.onMessage.addListener((msg) => {
 		   a profile before.                      */
 		profile.set_profile_elements();
 	}
+	if('userPrefs_changed' in msg){
+		user_preference_changed();
+	}
+	console.log("message received",msg);
 });
 
 /** Execute code when some change in the content of the webpage **/
@@ -31,13 +39,28 @@ function mutation_observer() {
 	  run_at: 'document_idle'
 	});
 
-	function webPage_changes(mutations) {
+	async function webPage_changes(mutations) {
 		console.log("Mutation");
 		profile.execute();
-		marked_users_to_pink();
+		if(userPrefs["highlightMarkedProfiles"])
+			marked_users_to_pink();
 		//profile_picture();
 	}
 
+}
+
+/** Defines userPrefs **/
+async function get_userPrefs(){
+	const usPrf = (await browser.storage.local.get("userPrefs")).userPrefs;
+	console.log("userPrefscheck",usPrf)
+	return usPrf;
+}
+
+/** Run when a preference changed **/
+async function user_preference_changed(){
+	oldUserPrefs = userPrefs;
+	userPrefs = await get_userPrefs();
+	profile.userPrefsChanged();
 }
 
 /** Sends messages **/
@@ -47,7 +70,7 @@ function background_do_action(action) {
 
 
 /** Profile Context **/
-function profile() {
+function Profile() {
 
 	/* Set profile elements that will be pinked */
 	this.set_profile_elements = () => {
@@ -63,23 +86,80 @@ function profile() {
 	}
 
 	/* Execute code of profile context */
-	this.execute = async () => {
-		if (!check_if_profile_elements_was_setted()){
+	this.execute = async (...arguments) => {
+		const checkUserPrefsChanged = arguments[0] == "userPrefs-changed";
+		if (!check_if_profile_elements_was_setted() || checkUserPrefsChanged){
 			console.log("Profile elements has been setted?",this.user);
 			this.set_profile_elements();
 			if (!check_if_its_a_profile_page()) return false;
 			await get_username_in_db();
-			set_profile_color();
+			if(userPrefs["highlightMarkedProfiles"])
+				set_profile_color();
 			console.log("Profile->execute context: Profile db entry:", this.databaseEntry)
 			this.pink_marked_profiles();
-			markButton.append();
-			//if(!this.databaseEntry) return false;			
+			if(userPrefs["showButtonMarker"])
+				markButton.append();
+		}
+	}
+
+	/* Run when a user preference was changed */
+	this.userPrefsChanged = async () => {
+		console.log("userPrefsChanged: Old user preferences:",oldUserPrefs);
+		let prefSelector = pref_select();
+		console.log("userPrefsChanged: userPrefsChanged: changing",userPrefs);
+		console.log("userPrefsChanged: prefSelector",prefSelector);
+		switch(prefSelector){
+			case "hide-button":
+				markButton.remove();
+				break;
+			case "show-button":
+				markButton.append();
+				break;
+			case "unhighlight-profiles":
+				profile.color = undefined;
+				profile.pink_unpink_profiles();
+				break;
+			case "highlight-profiles":
+				profile.execute("userPrefs-changed");
+				break;
+			case "disable-ctrlKey":
+				markButton.remove_ctrl_event();
+				break;
+			case "enable-ctrlKey":
+				markButton.add_ctrl_event();
+				break;
+		}
+
+		function pref_select(){
+			const prefs = [
+				"hide-button",
+				"show-button",
+				"unhighlight-profiles",
+				"highlight-profiles",
+				"disable-ctrlKey",
+				"enable-ctrlKey"
+			]
+			const userPrefsChanged = Object.values(userPrefs).map((value, index) => {
+				if(value ^ Object.values(oldUserPrefs)[index]) return true;
+				else return false;
+			})
+			console.log(userPrefsChanged);
+			let selector;
+			Object.entries(userPrefs).forEach(([key, value], index) => {
+				if(userPrefsChanged[index]){
+					selector = 2 * index + value;
+				}
+			})
+			return prefs[selector];
 		}
 	}
 
 	/* Checks if profile elements was setted */
 	const check_if_profile_elements_was_setted = () => {
-		return this.user;
+		if (this.user)
+			return true;
+		else
+			return false;
 	}
 
 	/* Check if it's in a profile page */
@@ -192,7 +272,7 @@ function profile() {
 
 
 /** Mark/unmark button **/
-function mark_button() {
+function MarkButton() {
 
 	// Appends markButton
 	this.append = async () => {
@@ -247,18 +327,23 @@ function mark_button() {
 
 	}
 
+	// Remove markButton
+	this.remove = () => {
+		this.buttonDiv0.remove();
+	}
+
 	// Adds click event
 	const add_click_event = () => {
 		this.buttonButton.addEventListener("click", mark_unmark_account);
 	}
 
 	// Adds the capability for adding to watchlist with ctrl+click
-	const add_ctrl_event = () => {
+	this.add_ctrl_event = () => {
 		document.addEventListener("keydown", ctrlkey_action);
 		document.addEventListener("keyup", ctrlkey_action);
 	}
 
-	const remove_ctrl_event = () => {
+	this.remove_ctrl_event = () => {
 		document.removeEventListener("keydown", ctrlkey_action);
 		document.removeEventListener("keyup", ctrlkey_action);
 	}
@@ -333,7 +418,7 @@ function mark_button() {
 				console.log("Button in",buttonState,"but for now passing in unmark mode");
 				this.buttonDiv2.textContent = this.unmarkText;
 				this.clickAction = "unmark";
-				remove_ctrl_event();
+				this.remove_ctrl_event();
 				switch (buttonState){
 					case "unmarkMarklist":
 						console.log("Button in unmarkMarklist mode");
@@ -352,7 +437,8 @@ function mark_button() {
 				switch (buttonState){
 					case "markMarklist":
 						console.log("Button in markMarklist mode");
-						add_ctrl_event();
+						if(userPrefs["ctrlClick"])
+							this.add_ctrl_event();
 						this.buttonButton.style.background = markColor.marklist1;
 						this.clickAction = "markMarklist";
 					break;

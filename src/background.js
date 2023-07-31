@@ -2,13 +2,18 @@
 
 /** Init extension functions **/
 init_local_database();
+init_userPrefs();
 
 /** Receives messages **/
 browser.runtime.onMessage.addListener(message_received);
 
 async function message_received(action){
-	console.log("Message Received");
+	console.log("Background: Message Received");
 	switch (action.action){
+		case "switch-user-preference":
+			console.log("In switch-user-preference",action.userPref,action.state);
+			set_user_preference(action.userPref,action.state);
+			break;
 		case "import-csv-to-database":
 			try {
 				import_csv_database = await import_csv_database(action.csvData);
@@ -39,13 +44,13 @@ async function message_received(action){
 }
 
 /** Send a Message to content-script when URL changed **/
-browser.tabs.onUpdated.addListener(sendMessageOfUrlChanged)
-async function sendMessageOfUrlChanged() {
+browser.tabs.onUpdated.addListener(sendMessageWhenUrlChanged)
+async function sendMessageWhenUrlChanged() {
 	const tab = await browser.tabs.query({currentWindow: true,active: true,});
 	console.log(tab[0].id);
 	if (tab[0].url.includes(".instagram.")){
 		console.log("passed");
-    	browser.tabs.sendMessage(tab[0].id, { url_changed : 1 });
+    	browser.tabs.sendMessage(tab[0].id, { url_changed : true });
     }
 }
 
@@ -58,6 +63,21 @@ async function init_local_database(){
 		browser.storage.local.set(cleanDatabase);
 }
 
+/** Init the userPrefs **/
+async function init_userPrefs(){
+	const cleanUserPrefs = {
+		userPrefs: {
+			showButtonMarker: true,
+			highlightMarkedProfiles: true,
+			ctrlClick: true
+		}
+	};
+	const localUserPrefs = await browser.storage.local.get('userPrefs');
+	if (!localUserPrefs || Object.keys(localUserPrefs).length === 0){
+		browser.storage.local.set(cleanUserPrefs);
+	}
+}
+
 /** Adds accounts to the database **/
 async function add_entry_to_local_database(igAccount,listType){
 	const localDatabase = (await browser.storage.local.get('database')).database;
@@ -68,9 +88,9 @@ async function add_entry_to_local_database(igAccount,listType){
 		tempDatabase.push({ig_account: igAccount, marked: listType});
 	}
 	console.log("add_entry_to_local_database: Temporal database after added element:", tempDatabase);
-	const database = tempDatabase;
+	const database = {database: tempDatabase};
 	await browser.storage.local.set(database);
-	console.log("add_entry_to_local_database: Database after added element:",db);
+	console.log("add_entry_to_local_database: Database after added element:",database);
 }
 
 /** Delete accounts of the database **/
@@ -81,9 +101,9 @@ async function remove_entry_of_local_database(igAccount){
 	tempDatabase.splice(indexOfDatabase,1);
 	console.log("remove_entry_of_local_database: Element to remove:",igAccount);
 	console.log("remove_entry_of_local_database: Temporal database after removed element:",tempDatabase);
-	const database = tempDatabase;
-	await browser.storage.local.set({database});
-	console.log("remove_entry_of_local_database: Database after removed element:",db);
+	const database = {database: tempDatabase};
+	await browser.storage.local.set(database);
+	console.log("remove_entry_of_local_database: Database after removed element:",database);
 }
 
 /** Reset Database */
@@ -92,6 +112,15 @@ async function reset_database(){
 	console.log("reset_database: Begin reset database...")
 	browser.storage.local.set(database);
 	console.log("Database reseted", await browser.storage.local.get("database"));
+}
+
+/** Change a user preference **/
+async function set_user_preference(userPref,state){
+	let tempUserPrefs;
+	tempUserPrefs = await browser.storage.local.get("userPrefs");
+	tempUserPrefs.userPrefs[userPref] = state;
+	console.log("set_user_preferences: temp preferences :", tempUserPrefs);
+	browser.storage.local.set(tempUserPrefs);
 }
 
 /** Update the database with csv file **/
