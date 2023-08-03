@@ -20,6 +20,14 @@ nav {
 	font-weight: 350;
 }
 
+.nav-link:hover,:active,:visited {
+	color: var(--first-pink);
+}
+
+.nav-link:active {
+	font-weight: 350;
+}
+
 .nav-pills .nav-link.active {
 	background: var(--first-pink);
 	font-weight: 600;

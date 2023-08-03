@@ -10,9 +10,9 @@ function add_triggers(){
 	console.log("add_trigger: elements that's going to add triggers",actionDomObjects);
 	actionDomObjects.forEach( element => {
 		let event;
-		if (element.tagName == "INPUT") event = "click";
-		else event = "change"
-		element.addEventListener(event, do_action)
+		if (element.tagName == "INPUT") event = "change";
+		else event = "click";
+		element.addEventListener(event, do_action);
 	});
 }
 
@@ -27,14 +27,13 @@ async function do_action(triggeredElement){
 		};
 		browser.runtime.sendMessage(action);
 		const tabs = (await browser.tabs.query({})).filter(tab => tab.url.includes(".instagram."));
-		console.log("do_action Instagram tabs:",tabs);
 		tabs.forEach(tab => {
 			console.log(tab);
 			browser.tabs.sendMessage(tab.id, {userPrefs_changed: true});
 		})
 	}
 	else {
-		browser.runtime.sendMessage(action);
+		browser.runtime.sendMessage({action});
 	}
 }
 

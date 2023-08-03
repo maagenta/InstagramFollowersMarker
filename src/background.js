@@ -40,6 +40,9 @@ async function message_received(action){
 		case "reset-database":
 			reset_database();
 			break;
+		case "update-accounts-at-all-tabs":
+			update_accounts();
+			break;
 	}
 }
 
@@ -204,4 +207,11 @@ function download_csv_file (csvFile) {
 		url: csvFileUrl,
 		filename: csvFilename
 	})
+}
+
+/** Update accounts in all tabs **/
+async function update_accounts(){
+	kitty = "miuau";
+	const tabs = (await browser.tabs.query({})).filter(tab => tab.url.includes(".instagram."));
+	tabs.forEach(tab =>	browser.tabs.sendMessage(tab.id, {update_accounts: true}));
 }

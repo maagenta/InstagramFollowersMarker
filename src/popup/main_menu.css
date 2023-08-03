@@ -78,7 +78,7 @@ footer > section {
 	flex-direction: column;
 }
 
-.link-primary {
+.link-primary, .link-primary:active, .link-primary:visited {
 	color: var(--first-pink);
 }
 

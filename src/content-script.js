@@ -10,11 +10,13 @@ let userPrefs, oldUserPrefs;
 	userPrefs = await get_userPrefs();
 	const mutationObserver = new mutation_observer();
 })()
+const accounts = new Accounts();
 const profile = new Profile();
 const markButton = new MarkButton(); // Markbutton in needs to be declared before
 
 /** Receives external messages **/
 browser.runtime.onMessage.addListener((msg) => {
+	console.log("message received",msg);
 	if('url_changed' in msg){
 		console.log("The URL has changed, and the message from background has been received");
 		/* Sets profile elements when url is changed
@@ -26,7 +28,9 @@ browser.runtime.onMessage.addListener((msg) => {
 	if('userPrefs_changed' in msg){
 		user_preference_changed();
 	}
-	console.log("message received",msg);
+	if('update_accounts' in msg){
+		accounts.update(); 
+	}
 });
 
 /** Execute code when some change in the content of the webpage **/
@@ -43,7 +47,7 @@ function mutation_observer() {
 		console.log("Mutation");
 		profile.execute();
 		if(userPrefs["highlightMarkedProfiles"])
-			marked_users_to_pink();
+			accounts.execute();
 		//profile_picture();
 	}
 
@@ -61,6 +65,7 @@ async function user_preference_changed(){
 	oldUserPrefs = userPrefs;
 	userPrefs = await get_userPrefs();
 	profile.userPrefsChanged();
+	accounts.userPrefsChanged();
 }
 
 /** Sends messages **/
@@ -362,7 +367,7 @@ function MarkButton() {
 	}
 
 		// Mark or unmark an profile account (markButton action)
-	const mark_unmark_account = () => {
+	const mark_unmark_account = async () => {
 		let listType;
 		console.log("Begins action of mark/unmark button with the follow listType",this.clickAction);
 	
@@ -388,6 +393,10 @@ function MarkButton() {
 				state("unmarkWatchlist");
 				break;
 		}
+
+		// Update the pinked accounts in accounts object at all contexts and tabs
+		background_do_action({action: "update-accounts-at-all-tabs"});
+		
 
 		function mark_account(listType){
 			console.log("Button in markmode pressed with the follow account username and lisType:", profile.accountUsername, listType);
@@ -457,119 +466,151 @@ function MarkButton() {
 
 
 /** In the account list, marked accounts to Pink **/
-function marked_users_to_pink() {
+function Accounts() {
 
 	// Begin pinking in the distints contexts
-	searchBox_context();
-	sidebar_context();
-	follow_context();
-	popup_account_context();
-	suggested_context();
-
-	function searchBox_context(){
-		let account = {};
-		account.context = "searchBox"; //only for debugging purposes
-		account.searchBox = ".x9f619.x78zum5.xdt5ytf.x12dtdjy.x6ikm8r.x1odjw0f.x4uap5.x18d9i69.xkhd6sd.xh8yej3.x1iyjqo2.xocp1fn";
-		account.username = ".x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft div span.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.xt0psk2.x1i0vuye.xvs91rp.x1s688f.x5n08af.x10wh9bi.x1wdrske.x8viiok.x18hxmgj";
-		account.description = ".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xo1l8bm.x1roi4f4.x10wh9bi.x1wdrske.x8viiok.x18hxmgj .x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft";
-		account.descriptionFilter = "a:not([href*='/tags/'])"; // filter tags
-		account.username = account.searchBox + " " + account.username ;
-		account.description = account.searchBox + " " + account.descriptionFilter + " " + account.description;
-
-		pink_accounts({...account});
+	this.execute = async () => {
+		await this.searchBoxContext.pink_marked_accounts();
+		await this.sidebarContext.pink_marked_accounts();
+		await this.followContext.pink_marked_accounts();
+		await this.popupAccountContext.pink_marked_accounts();
 	}
 
-	function sidebar_context(){
-		let account = {};
-		account.context = "sidebar"; //only for debugging purposes
-		account.sidebarBox = "._aak6._aak9 ._aak3._agh4 .x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x12nagc.xsgj6o6.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.xdt5ytf.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1";
-		account.username = ".x9f619.xjbqb8w.x1rg5ohu.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x6s0dn4.x1oa3qoh.x1nhvcw1";
-		account.description = ".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xo1l8bm.x1roi4f4.x10wh9bi.x1wdrske.x8viiok.x18hxmgj .x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft";
-		account.username = account.sidebarBox + " " + account.username;
-		account.description = account.sidebarBox + " " + account.description;
-
-		pink_accounts({...account});
+	this.update = async () => {
+		this.searchBoxContext.unpink_marked_accounts();
+		this.sidebarContext.unpink_marked_accounts();
+		this.followContext.unpink_marked_accounts();
+		await this.execute();
 	}
 
-	function suggested_context(){
-		let account = {};
-		account.context = "suggested";
-		account.suggestedBox = ".x1qjc9v5.x9f619.x78zum5.xdt5ytf.x1iyjqo2.xs83m0k.xdj266r.xkrivgy.xat24cr.x1gryazu.x10v308y.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x11njtxf.xh8yej3.xlue5dm.x1sj0e5j.x1v758hv.x2hwt.xkqow3a";
-		account.userBox = ".x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1pi30zi.x1swvt13.xwib8y2.x1y1aw1k.x1uhb9sk.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.xdt5ytf.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1";
-		account.username = ".x9f619.xjbqb8w.x1rg5ohu.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x6s0dn4.x1oa3qoh.x1nhvcw1";
-		account.description = ".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x10wh9bi.x1wdrske.x8viiok.x18hxmgj";
-		account.description2 = true // It isn't necesary to determine because the second description is the nextSibling of the first description
-		account.username = account.suggestedBox + " " + account.userBox + " " + account.username;
-		account.description = account.suggestedBox + " " + account.userBox + " " + account.description;
-
-		pink_accounts({...account});
-	}
-
-	function follow_context(){
-		let account = {};
-		account.context = "follow"; //only for debugging purposes
-		account.followBox = ".x7r02ix.xf1ldfh.x131esax.xdajt7p.xxfnqb6.xb88tzc.xw2csxc.x1odjw0f.x5fp0pe";
-		account.username = ".x9f619.xjbqb8w.x1rg5ohu.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x6s0dn4.x1oa3qoh.x1nhvcw1";
-		account.description = ".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x10wh9bi.x1wdrske.x8viiok.x18hxmgj .x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft";
-		account.username = account.followBox + " " + account.username;
-		account.description = account.followBox + " " + account.description;
-
-		pink_accounts({...account});
-	}
-
-	async function popup_account_context() {
-		let account = {};
-		account.context = "popup_account";
-		account.popupBox = ".xvbhtw8.x1lq5wgf.xgqcy7u.x30kzoy.x9jhf4c.x1rj4ezl.x1n2onr6.xfr5jun.xexx8yu.x4uap5.x18d9i69.xkhd6sd";
-		account.username = ".x6s0dn4.x78zum5.xmix8c7";
-		account.userDetails_1 = ".xmix8c7.x1gslohp.x1rva8in";
-		account.userDetails_2 = ".x6s0dn4.xrvj5dj.x8l38fb.x1rp53t7";
-		account.username = document.querySelector(account.popupBox + " " + account.username);
-		if(!account.username) return false;
-		account.userDetails_1 = document.querySelector(account.popupBox + " " + account.userDetails_1);
-		account.userDetails_2 = document.querySelector(account.popupBox + " " + account.userDetails_2);
-		account.username.text = account.username.querySelector("a > span").innerText;
-
-		const isPopupAccountInDatabase = await check_if_profile_is_in_database(account.username.text);
-		console.log("popup_account_context object:",account);
-		console.log("popup_account checking if username is in the database:", isPopupAccountInDatabase);
-
-		let markColor1, markColor2;
-		switch(isPopupAccountInDatabase.marked){
-			default:
-				return false;
-			case 0:
-				markColor1 = markColor.marklist1;
-				markColor2 = markColor.marklist2;
-				break;
-			case 1:
-				markColor1 = markColor.watchlist1;
-				markColor2 = markColor.watchlist2;
-				break;
+	this.userPrefsChanged = () => {
+		if(oldUserPrefs.highlightMarkedProfiles == userPrefs.highlightMarkedProfiles)
+			return false;
+		if(userPrefs.highlightMarkedProfiles == true){
+			this.execute();
 		}
-
-		pink_all(account.username, markColor1);
-		pink_all(account.userDetails_1, markColor2);
-		pink_all(account.userDetails_2, markColor2);
+		else {
+			this.searchBoxContext.unpink_marked_accounts();
+			this.sidebarContext.unpink_marked_accounts();
+			this.followContext.unpink_marked_accounts();
+		}
 	}
 
-	async function pink_accounts(account){
-		account.usernameDocumentElements = document.querySelectorAll(account.username);
-		account.descriptionDocumentElements = document.querySelectorAll(account.description);
-		//if(account.context == "sidebar") console.log("Description to pink:", account);
+	this.searchBoxContext = {
+		context : "searchBox", //only for debugging purposes
+		selectors : {
+			container_0 : "div.x78zum5.xdt5ytf.x1iyjqo2.x5yr21d.x1odjw0f.x1n2onr6.xh8yej3",
+			container_1: "div.x9f619.x78zum5.xdt5ytf.x1iyjqo2.x6ikm8r.x1odjw0f.xh8yej3.xocp1fn",
+			accountContainer : "a",
+			username : "div > div > div > div > div > div > div > span",
+			description : "span.x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft",
+			descriptionFilter : ":not([href*='/tags/'], [href*='/explore/'])", // filter tags
+		},
+		get username() { 
+			return `:is(${this.selectors.container_0},${this.selectors.container_1}) ${this.selectors.accountContainer}  ${this.selectors.username}`;
+		},
+		get description() {
+			return `:is(${this.selectors.container_0},${this.selectors.container_1}) ${this.selectors.accountContainer}${this.selectors.descriptionFilter} ${this.selectors.description}`;
+		},
+	}
 
-		if(!account.usernameDocumentElements[0]) return false;
+	this.sidebarContext = {
+		context : "sidebar",
+		selectors : {
+			container : "._aak6._aak9 ._aak3._agh4 .x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x12nagc.xsgj6o6.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.xdt5ytf.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1",
+			accountContainer: ".x1dm5mii.x16mil14.xiojian.x1yutycm.x1lliihq.x193iq5w.xh8yej3",
+			username : "div > div > div > div > div > div > div > div > a > div > div > span",
+			description : "div > div > div > div > div > div > span > span",
+		},
+		get username() { return `${this.selectors.container} ${this.selectors.accountContainer} ${this.selectors.username}` },
+		get description() { return `${this.selectors.container} ${this.selectors.accountContainer} ${this.selectors.description}` },
+	}
 
-		checkedAccounts = await check_if_accounts_are_in_database(account.usernameDocumentElements, account.descriptionDocumentElements);
-		account.usernameDocumentElements = checkedAccounts.usernames;
-		account.descriptionDocumentElements = checkedAccounts.descriptions;
-		account.markColors1 = mark_colors("markColor1");
-		account.markColors2 = mark_colors("markColor2");
+	this.followContext = {
+		context : "follow", //only for debugging purposes
+		selectors : {
+			container : ".x7r02ix.xf1ldfh.x131esax.xdajt7p.xxfnqb6.xb88tzc.xw2csxc.x1odjw0f.x5fp0pe",
+			username : ".x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x6s0dn4.x1oa3qoh.x1nhvcw1 span",
+			description : ".x1lliihq.x1plvlek.xryxfnj.x1n2onr6.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x10wh9bi.x1wdrske.x8viiok.x18hxmgj .x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft",
+		},
+		get username() { return this.selectors.container + " " + this.selectors.username },
+		get description() { return this.selectors.container + " " + this.selectors.description },
+	}
+
+	const add_common_to_contexts = () => {
+		const listContexts = ["searchBoxContext", "sidebarContext", "followContext"];
+		listContexts.forEach(context => {
+			this[context].pinkedElements = {};
+			this[context].pink_marked_accounts = function() { pink_accounts(this) };
+			this[context].unpink_marked_accounts = function() { unpink_accounts(this) };
+		})
+	}
+	add_common_to_contexts();
+
+	this.popupAccountContext = {
+		context : "popup_account",
+		selectors : {
+			popupBox : ".xvbhtw8.x1lq5wgf.xgqcy7u.x30kzoy.x9jhf4c.x1rj4ezl.x1n2onr6.xfr5jun.xexx8yu.x4uap5.x18d9i69.xkhd6sd",
+			username : ".x6s0dn4.x78zum5.xmix8c7",
+			userDetails_1 : ".xmix8c7.x1gslohp.x1rva8in",
+			userDetails_2 : ".x6s0dn4.xrvj5dj.x8l38fb.x1rp53t7",
+		},
+		pink_marked_accounts : async function() {
+			const username = document.querySelector(this.selectors.popupBox + " " + this.selectors.username);
+			if(!username) return false;
+			const userDetails_1 = document.querySelector(this.selectors.popupBox + " " + this.selectors.userDetails_1);
+			const userDetails_2 = document.querySelector(this.selectors.popupBox + " " + this.selectors.userDetails_2);
+			const usernameText = username.querySelector("a > span").innerText;
+
+			const isPopupAccountInDatabase = await check_if_profile_is_in_database(usernameText);
+			console.log("popup_account_context object:",this);
+			console.log("popup_account checking if username is in the database:", isPopupAccountInDatabase);
+
+			let markColor1, markColor2;
+			switch(isPopupAccountInDatabase.marked){
+				default:
+					return false;
+				case 0:
+					markColor1 = markColor.marklist1;
+					markColor2 = markColor.marklist2;
+					break;
+				case 1:
+					markColor1 = markColor.watchlist1;
+					markColor2 = markColor.watchlist2;
+					break;
+			}
+			pink_all(username, markColor1);
+			pink_all(userDetails_1, markColor2);
+			pink_all(userDetails_2, markColor2);
+		}
+	}
+
+	async function pink_accounts(context){
+		const usernameDocumentElements = document.querySelectorAll(context.username);
+		const descriptionDocumentElements = document.querySelectorAll(context.description);
+		
+		if(!usernameDocumentElements[0]) return false;
+
+		const checked_accounts = await check_if_accounts_are_in_database(usernameDocumentElements, descriptionDocumentElements);
+
+		if(check_if_all_accounts_elements_was_pinked_before(context.pinkedElements.usernameDocumentElements,checked_accounts.usernames))
+			return false;
+		
+		delete_account_username_and_description_element_if_it_was_pinked_before(
+			context.pinkedElements.usernameDocumentElements,
+			context.pinkedElements.descriptionDocumentElements,
+			checked_accounts.usernames,
+			checked_accounts.descriptions
+		);
+
+		context.pinkedElements.usernameDocumentElements = checked_accounts.usernames;
+		context.pinkedElements.descriptionDocumentElements = checked_accounts.descriptions;
+		
+		const markColors1 = mark_colors("markColor1");
+		const markColors2 = mark_colors("markColor2");
 
 		function mark_colors(_markColor){
-			console.log("markcolor one or two?",_markColor);
-			console.log("markcolor checked accounts listType:",checkedAccounts.listTypes);
-			entriesMarkColors = checkedAccounts.listTypes.map(
+			const entriesMarkColors = checked_accounts.listTypes.map(
 				listType => {
 					let markColor1, markColor2;
 					switch(`${listType} ${_markColor}`) {
@@ -590,18 +631,43 @@ function marked_users_to_pink() {
 			return entriesMarkColors;
 		}
 
-		console.log("pink_accounts: Checked accounts:",checkedAccounts);
-		console.log("pink_accounts: Account elements color",account.markColors1,account.markColors2)
-		pink_all(account.usernameDocumentElements, account.markColors1);
-		pink_all(account.descriptionDocumentElements, account.markColors2);
+		console.log("pink__accounts: Checked _accounts:",checked_accounts);
+		console.log("pink__accounts: _account elements color",markColors1,markColors2)
+		pink_all(context.pinkedElements.usernameDocumentElements, markColors1);
+		pink_all(context.pinkedElements.descriptionDocumentElements, markColors2);
 
-		// Account description 2 is exclusive to the suggest list context,
+		// _account description 2 is exclusive to the suggest list context,
 		// the second description tell things like "Followed by xxx and yyy".
-		if (account.description2){
-			account.descriptionDocumentElements.forEach((element,index) => {
-				pink_all(element.nextElementSibling, account.markColors2[index])
+		if (context.description2){
+			context.pinkedElements.descriptionDocumentElements.forEach((element,index) => {
+				pink_all(element.nextElementSibling, markColors2[index])
 			})
 		}
+
+		function check_if_all_accounts_elements_was_pinked_before(pinked,toPink){
+			if (!pinked || !toPink) return false;
+			let check = toPink.every(element => pinked.includes(element));
+			return check;
+		}
+
+		function delete_account_username_and_description_element_if_it_was_pinked_before(usernamesBef,descriptionsBef,usernamesAft,descriptionsAft) {
+			if (!usernamesBef || !descriptionsBef) return false;
+			usernamesAft = usernamesAft.filter(usrnme => !usernamesBef.includes(usrnme));
+			descriptionsAft.filter(desc => !descriptionsBef.includes(desc));
+		}
+	}
+
+	function unpink_accounts(context) {
+		const pinkedElements = context.pinkedElements;
+		if(pinkedElements.usernameDocumentElements){
+			pinkedElements.usernameDocumentElements.forEach(remove_color);
+			pinkedElements.usernameDocumentElements = undefined;
+		}
+		if(pinkedElements.descriptionDocumentElements){
+			pinkedElements.descriptionDocumentElements.forEach(remove_color);
+			pinkedElements.descriptionDocumentElements = undefined;
+		}
+		function remove_color(element){ element.style.color='' };
 	}
 }
 
