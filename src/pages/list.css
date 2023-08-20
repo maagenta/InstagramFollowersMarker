@@ -1,7 +1,8 @@
 @import '../popup/color_palette.css';
 
+/* Global variables begin with 'G-' */
 :root{
-	--cards-transition-duration: 300ms;
+	--G-nav-height: 83px; /* The height calculated with the padding and the inner elements */
 }
 
 * {
@@ -11,13 +12,22 @@
 }
 
 nav {
-	padding: 30px 20px 20px 20px;
-	background: var(--second-gray);
+	position: relative;
+	z-index: 2;
+	padding: 18px 15px 18px 15px;
+	background: #ffd0f8;
+	background: radial-gradient(circle, rgba(255,208,248,1) 0%, rgba(255,208,248,1) 34%, rgba(243,198,236,1) 100%); 
+	box-shadow: 0px 1px 6px 0px #fdc4f4;
+	border-bottom: 1px solid #e6a9d0;
+	height: var(--G-nav-height); 
 }
 
 .nav-link {
 	color: var(--second-pink);
-	font-weight: 350;
+	letter-spacing: 1px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-size: 20px;
+	font-weight: 600;
 }
 
 .nav-link:hover,:active,:visited {
@@ -30,11 +40,15 @@ nav {
 
 .nav-pills .nav-link.active {
 	background: var(--first-pink);
+	border: 1px solid rgb(183, 27, 111);
+	background: linear-gradient(156deg, rgba(255,20,147,1) 0%, rgba(255,46,159,1) 22%, rgba(255,20,147,1) 53%, rgba(255,46,159,1) 80%, rgba(255,20,147,1) 100%); 
 	font-weight: 600;
 }
 
 main {
+	min-height: calc(100vh - var(--G-nav-height));
 	padding: 20px;
+	background: #ffdef3;
 }
 
 .account-list {
@@ -49,24 +63,52 @@ main {
 	height: 200px;
 	background-color: #f1f1f1;
 	overflow: hidden;
-	transition: var(--cards-transition-duration) ease-out;
+	--hide-transition-duration: 300ms;
+	--hide-transition-easing: cubic-bezier(0.250, 0.460, 0.450, 0.940);
+	--hover-transition-duration: 100ms;
+	transition: width var(--hide-transition-duration) var(--hide-transition-easing),
+				opacity calc(var(--hide-transition-duration) * 0.3) var(--hide-transition-easing),
+				box-shadow calc(var(--hover-transition-duration) * 0.8);
+
 }
 
-.account.marklist{
-	background-color: #dec2df;
+.account:hover {
+	transition: box-shadow var(--hover-transition-duration); /* the transition has a different duration in each direction */
+}
+
+.account.marklist {
+	background-color: #fdabff;
+	background: radial-gradient(circle, rgba(253,171,255,1) 0%, rgba(254,193,255,1) 49%, rgba(253,171,255,1) 100%); 
+	--shadow-color-1: #febbfb;
+	--shadow-color-2: #f4cbf4;
+	box-shadow: 0px 0px inset var(--shadow-color-1), 0px 0px inset var(--shadow-color-2); /* Avoid to animate opacity in transition */
+}
+
+.account.marklist:hover {
+	box-shadow: 5px -4px inset var(--shadow-color-1), -5px 5px inset var(--shadow-color-2);
 }
 
 .account.watchlist{
 	background-color: #d3a5e7;
+	background: radial-gradient(circle, rgba(211,165,231,1) 0%, rgba(225,176,246,1) 49%, rgba(211,165,231,1) 100%); 
+	--shadow-color-1: #d8b0ea;
+	--shadow-color-2: #e1b7eb;
+	box-shadow: 0px 0px inset var(--shadow-color-1), 0px 0px inset var(--shadow-color-2); /* Avoid to animate opacity in transition */
+}
+
+.account.account.watchlist:hover {
+	box-shadow: 5px -4px inset var(--shadow-color-1), -5px 5px inset var(--shadow-color-2);
 }
 
 .account.hide {
 	width: 0;
-	height: 0;
+	height: 200px;
+	margin: 10px 0 10px 0;
 	padding: 0;
-	margin: 0;
 	border: 0;
 	opacity: 0;
+	transition: width var(--hide-transition-duration) var(--hide-transition-easing),
+				opacity calc(var(--hide-transition-duration) * 0.4) var(--hide-transition-easing) calc(var(--hide-transition-duration) * 0.6);
 }
 
 .account a {
@@ -75,33 +117,58 @@ main {
 	height: 100%;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	text-align: center;
 	text-decoration: none;
 	color: inherit;
 }
 
-.account a span {
-	font-weight: 300;
-	color: #2b2b2b;
+.account a div {
+	width: 200px;
+	height: 150px;
 }
 
-.account img {
+.account a img {
+	margin-top: 33px;
 	width: 100px;
 	height: 100px;
 	border-radius: 50%;
+	border: 1px solid rgba(0,0,0,.125);
 }
 
-.username {
-	margin-top: 10px;
-	font-weight: bold;
+.account a span {
+	max-width: 180px;
+	font-size: 16px;
+	font-weight: 300;
+	color: #2b2b2b;
+	background: #ffdef34f;
+	padding: 2px 10px 2px 10px;
+	border-radius: 10px;
+	border: 1px solid rgba(0,0,0,.125);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: .8px;
+	transition: var(--hover-transition-duration) ease-in-out;
+}
+
+.account.marklist a span {
+	color: deeppink;
+}
+
+.account.watchlist a span {
+	color: purple;
+}
+
+.account:hover a span {
+	translate: 0 -5px;
+	box-shadow: 0px 2px #fedfff82;
 }
 
 .no-marked-account-msg {
 	margin: 15px 20px;
 	opacity: 1;
 	transition: 80ms ease;
-	transition-delay: calc(var(--cards-transition-duration)*0.76);
+	transition-delay: calc(var(--G-cards-hide-transition-duration)*0.76);
 }
 
 .no-marked-account-msg.hide {

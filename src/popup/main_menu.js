@@ -1,3 +1,4 @@
+'use strict'
 import * as modalBox from "./modal_box.js"
 
 /** Begin flow **/

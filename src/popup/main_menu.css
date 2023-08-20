@@ -28,6 +28,11 @@ header > section {
 	align-items: center;
 }
 
+header > section > figure {
+	flex-grow: 1;
+	text-align: center;
+}
+
 header h1 {
 	color: var(--first-violet);
 	margin-bottom: 5px;

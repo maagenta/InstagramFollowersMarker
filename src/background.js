@@ -1,3 +1,5 @@
+'use strict'
+
 // background-script.js
 
 /** Init extension functions **/
@@ -211,7 +213,6 @@ function download_csv_file (csvFile) {
 
 /** Update accounts in all tabs **/
 async function update_accounts(){
-	kitty = "miuau";
-	const tabs = (await browser.tabs.query({})).filter(tab => tab.url.includes(".instagram."));
+	const tabs = (await browser.tabs.query({})).filter(tab => tab.url.includes(".instagram.") && !tab.active);
 	tabs.forEach(tab =>	browser.tabs.sendMessage(tab.id, {update_accounts: true}));
 }

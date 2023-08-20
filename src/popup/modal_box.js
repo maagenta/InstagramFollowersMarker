@@ -1,3 +1,4 @@
+'use strict'
 let modal, modalContent;
 export function open(modalBox){
 	document.body.insertAdjacentHTML("beforeend",modalBox);
