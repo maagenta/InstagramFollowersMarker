@@ -2,26 +2,19 @@
 
   "manifest_version": 2,
   "name": "Instagram Followers Marker",
-  "author": "Sebastián Castro Gálvez",
-  "version": "1.0",
+  "author": "Maagenta",
+  "version": "1.0.0",
 
-  "description": "Tiny tool for marking followed accounts",
+  "description": "Tiny tool for marking Instagram accounts",
 
   "icons": {
     "64": "icons/IFG-64.png"
   },
 
   "permissions": [
-        "dns",
-    "menus",
-    "privacy",
     "storage",
-    "downloads",
     "tabs",
     "unlimitedStorage",
-    "webNavigation",
-    "webRequest",
-    "webRequestBlocking",
     "activeTab",
      "*://*instagram.com/*"
   ],
